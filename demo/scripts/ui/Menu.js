@@ -981,13 +981,23 @@ Menu.prototype._init = function () {
         resSelector.removeClass('active');
       }
     } else {
-      const type = toolbar.substr(toolbar.lastIndexOf('-') + 1, toolbar.length);
-      const selector = $(`${self._menuId} [data-toggle="${type}-immediate"]`
-          + `[data-value="${unarray(self._viewer.rep()[type])}"]`);
-      if (this.classList.contains('active') === true) {
-        selector.addClass('active');
+      const curRep = self._viewer.rep();
+      if (curRep !== null) {
+        elements.toggle();
+        this.classList.toggle('active');
+
+        const type = toolbar.substr(toolbar.lastIndexOf('-') + 1, toolbar.length);
+        const selector = $(`${self._menuId} [data-toggle="${type}-immediate"]`
+            + `[data-value="${unarray(curRep[type])}"]`);
+        if (this.classList.contains('active') === true) {
+          selector.addClass('active');
+        } else {
+          selector.removeClass('active');
+        }
       } else {
-        selector.removeClass('active');
+        self._viewer.logger.error('No molecule');
+        /*elements.toggle();
+        this.classList.toggle('active');*/
       }
     }
   });
@@ -1789,9 +1799,14 @@ Menu.prototype._initToolbar = function () {
   $(`${self._menuId} [data-toggle="mode-immediate"]`).each((index, element) => {
     const id = element.getAttribute('data-value');
     element.addEventListener('click', (event) => {
-      $(`${self._menuId} [data-value="${unarray(self._viewer.rep().mode)}"]`).removeClass('active');
-      $(`${self._menuId} [data-value=miew-menu-toolbar-mode]`).click();
-      self._viewer.rep({ mode: id });
+      const curRep = self._viewer.rep();
+      if (curRep) {
+        $(`${self._menuId} [data-value="${unarray(curRep.mode)}"]`).removeClass('active');
+        $(`${self._menuId} [data-value=miew-menu-toolbar-mode]`).click();
+        self._viewer.rep({ mode: id });
+      } else {
+        $(`${self._menuId} [data-value=miew-menu-toolbar-mode]`).click();
+      }
       event.preventDefault();
       self._fixKeyboard();
     });
@@ -1801,9 +1816,14 @@ Menu.prototype._initToolbar = function () {
   $(`${self._menuId} [data-toggle="colorer-immediate"]`).each((index, element) => {
     const id = element.getAttribute('data-value');
     element.addEventListener('click', (event) => {
-      $(`${self._menuId} [data-value="${unarray(self._viewer.rep().colorer)}"]`).removeClass('active');
-      $(`${self._menuId} [data-value=miew-menu-toolbar-colorer]`).click();
-      self._viewer.rep({ colorer: id });
+      const curRep = self._viewer.rep();
+      if (curRep) {
+        $(`${self._menuId} [data-value="${unarray(curRep.colorer)}"]`).removeClass('active');
+        $(`${self._menuId} [data-value=miew-menu-toolbar-colorer]`).click();
+        self._viewer.rep({ colorer: id });
+      } else {
+        $(`${self._menuId} [data-value=miew-menu-toolbar-colorer]`).click();
+      }
       event.preventDefault();
       self._fixKeyboard();
     });
