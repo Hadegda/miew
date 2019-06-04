@@ -66,6 +66,11 @@ class ExtrudedObjectsGeometry extends ChunkedObjectsGeometry {
     const positions = this._positions;
     const normals = this._normals;
     const nPtsInRing = ptsCount * VEC_SIZE;
+    const undVector3 = new THREE.Vector3(0, 0, 0);
+
+    const prRingPt = new THREE.Vector3(0, 0, 0);
+    const normInPrevRingPt = new THREE.Vector3(0, 0, 0);
+    const prPrRingNormal = new THREE.Vector3(0, 0, 0);
 
 
     const tmpShape = this._tmpShape;
@@ -82,9 +87,19 @@ class ExtrudedObjectsGeometry extends ChunkedObjectsGeometry {
         const prPt = tmpShape[(j + ptsCount - 1) % ptsCount];
 
         const vtxIdx = chunkStartIdx + innerPtIdx;
-        const prRingPt = new THREE.Vector3().fromArray(positions, vtxIdx - nPtsInRing);
-        const normInPrevRingPt = new THREE.Vector3().fromArray(normals, vtxIdx - nPtsInRing);
-        const prPrRingNormal = new THREE.Vector3().fromArray(normals, vtxIdx - 2 * nPtsInRing);
+
+        if (vtxIdx > nPtsInRing) {
+          prRingPt.fromArray(positions, vtxIdx - nPtsInRing);
+          normInPrevRingPt.fromArray(normals, vtxIdx - nPtsInRing);
+          if (vtxIdx > 2 * nPtsInRing) {
+            prPrRingNormal.fromArray(normals, vtxIdx - 2 * nPtsInRing);
+          } else {
+            prPrRingNormal.copy(undVector3);
+          }
+        } else {
+          prRingPt.copy(undVector3);
+          normInPrevRingPt.copy(undVector3);
+        }
 
         point.toArray(positions, vtxIdx);
         this._countNormals(point, nxPt, prPt, prRingPt, prPrRingNormal, (i === 1), hasSlope).toArray(normals, vtxIdx);
