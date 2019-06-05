@@ -972,7 +972,6 @@ Menu.prototype._init = function () {
     if (toolbar === 'miew-menu-toolbar-resolution') {
       elements.toggle();
       this.classList.toggle('active');
-
       const resSelector = $(`${self._menuId} [data-toggle="resolution-immediate"]`
           + `[data-value="${settings.now.resolution}"]`);
       if (this.classList.contains('active') === true) {
@@ -1923,8 +1922,7 @@ Menu.prototype.show = function (panelID, menuItem) {
   });
 
   // renew currently opened mode-, colorer-, matpreset- combobox panel (need, when they were changed from toolbar)
-  if (self._curPanelID.indexOf('selection') !== -1
-    || self._curPanelID.indexOf('mode') !== -1
+  if (self._curPanelID.indexOf('mode') !== -1
     || self._curPanelID.indexOf('color') !== -1
     || self._curPanelID.indexOf('matpreset') !== -1) {
     const reprList = $(`${self._menuId} [data-panel-type=miew-menu-panel-representation] .miew-repr-list`);
