@@ -57,77 +57,113 @@ class ExtrudedObjectsGeometry extends ChunkedObjectsGeometry {
     }
   }
 
-  setItem(itemIdx, matrices, hasSlope = false, hasCut = false) {
-    const shape = this._chunkGeo._positions;
-    const ptsCount = shape.length;
-    let innerPtIdx = 0;
-    const chunkStartIdx = ptsCount * this._ringsCount * itemIdx * VEC_SIZE;
-
-    const positions = this._positions;
-    const normals = this._normals;
-    const nPtsInRing = ptsCount * VEC_SIZE;
-    const undVector3 = new THREE.Vector3(0, 0, 0);
-
-    const prRingPt = new THREE.Vector3(0, 0, 0);
-    const normInPrevRingPt = new THREE.Vector3(0, 0, 0);
-    const prPrRingNormal = new THREE.Vector3(0, 0, 0);
-
-
+  _setPoints(matrices, ptsCount, chunkStartIdx, hasCut) {
     const tmpShape = this._tmpShape;
+    const positions = this._positions;
+    const shape = this._chunkGeo._positions;
+
+    let innerPtIdx = 0;
+    const nPtsInRing = ptsCount * VEC_SIZE;
+
     for (let i = 0, n = matrices.length; i < n; ++i) {
       const mtx = matrices[i];
 
-      for (let j = 0; j < ptsCount; ++j) {
-        tmpShape[j].copy(shape[j]).applyMatrix4(mtx);
-      }
-
       for (let j = 0; j < ptsCount; ++j, innerPtIdx += VEC_SIZE) {
-        const point = tmpShape[j];
-        const nxPt = tmpShape[(j + 1) % ptsCount];
-        const prPt = tmpShape[(j + ptsCount - 1) % ptsCount];
-
         const vtxIdx = chunkStartIdx + innerPtIdx;
 
-        if (vtxIdx > nPtsInRing) {
-          prRingPt.fromArray(positions, vtxIdx - nPtsInRing);
-          normInPrevRingPt.fromArray(normals, vtxIdx - nPtsInRing);
-          if (vtxIdx > 2 * nPtsInRing) {
-            prPrRingNormal.fromArray(normals, vtxIdx - 2 * nPtsInRing);
-          } else {
-            prPrRingNormal.copy(undVector3);
-          }
-        } else {
-          prRingPt.copy(undVector3);
-          normInPrevRingPt.copy(undVector3);
-        }
+        tmpShape[j].copy(shape[j]).applyMatrix4(mtx);
+        tmpShape[j].toArray(positions, vtxIdx);
 
-        point.toArray(positions, vtxIdx);
-        this._countNormals(point, nxPt, prPt, prRingPt, prPrRingNormal, (i === 1), hasSlope).toArray(normals, vtxIdx);
-
-        if (!hasCut) {
-          continue;
-        }
-
-        // zero and first sections lies in one plane and normals for all their points are orthogonal with this plane
-        // second section points are shifted into first section points for having sharp angle on the end of cut
-        switch (i) {
-          case 0:
-            tmpPrev.subVectors(point, prPt).normalize();
-            tmpNext.subVectors(point, nxPt).normalize();
-            tmpPrev.crossVectors(tmpNext, tmpPrev).normalize();
-
-            tmpPrev.toArray(normals, vtxIdx);
-            break;
-          case 1:
-            normInPrevRingPt.toArray(normals, vtxIdx);
-            break;
-          case 2:
-            prRingPt.toArray(positions, vtxIdx);
-            break;
-          default:
-            break;
+        if (hasCut && i === 2) {
+          positions[vtxIdx] = positions[vtxIdx - nPtsInRing];
+          positions[vtxIdx + 1] = positions[vtxIdx - nPtsInRing + 1];
+          positions[vtxIdx + 2] = positions[vtxIdx - nPtsInRing + 2];
         }
       }
+    }
+  }
+
+  _setBaseNormals(ptsCount, chunkStartIdx, hasCut) {
+    const normals = this._normals;
+    const tmpShape = this._tmpShape;
+
+    let innerPtIdx = 0;
+    for (let i = 0; i < this._ringsCount; ++i) {
+      for (let j = 0; j < ptsCount; ++j, innerPtIdx += VEC_SIZE) {
+        const vtxIdx = chunkStartIdx + innerPtIdx;
+        tmpShape[j].fromArray(this._positions, vtxIdx);
+      }
+      innerPtIdx = i * (ptsCount * 3);
+      for (let j = 0; j < ptsCount; ++j, innerPtIdx += VEC_SIZE) {
+        const vtxIdx = chunkStartIdx + innerPtIdx;
+
+        tmpPrev.subVectors(tmpShape[j], tmpShape[(j + ptsCount - 1) % ptsCount]).normalize();
+        tmpNext.subVectors(tmpShape[j], tmpShape[(j + 1) % ptsCount]).normalize();
+        new THREE.Vector3().addVectors(tmpPrev, tmpNext).normalize().toArray(normals, vtxIdx);
+      }
+    }
+  }
+
+  _setSlopeNormals(ptsCount, chunkStartIdx, hasCut) {
+    const normals = this._normals;
+    const tmpShape = this._tmpShape;
+
+    let innerPtIdx = 0;
+    for (let i = 0; i < this._ringsCount; ++i) {
+      if (hasCut && i === 0) {
+        for (let j = 0; j < ptsCount; ++j, innerPtIdx += VEC_SIZE) {
+          const vtxIdx = chunkStartIdx + innerPtIdx;
+          tmpShape[j].fromArray(this._positions, vtxIdx);
+        }
+        innerPtIdx = i * (ptsCount * 3);
+        for (let j = 0; j < ptsCount; ++j, innerPtIdx += VEC_SIZE) {
+          const vtxIdx = chunkStartIdx + innerPtIdx;
+
+          tmpPrev.subVectors(tmpShape[j], tmpShape[(j + ptsCount - 1) % ptsCount]).normalize();
+          tmpNext.subVectors(tmpShape[j], tmpShape[(j + 1) % ptsCount]).normalize();
+          new THREE.Vector3().crossVectors(tmpNext, tmpPrev).normalize().toArray(normals, vtxIdx);
+        }
+        continue;
+      }
+      if (hasCut && i === 1) {
+        for (let j = 0; j < ptsCount; ++j, innerPtIdx += VEC_SIZE) {
+          const vtxIdx = chunkStartIdx + innerPtIdx;
+          new THREE.Vector3().fromArray(normals, vtxIdx - ptsCount * 3).toArray(normals, vtxIdx);
+        }
+        continue;
+      }
+      if (i === 1) {
+        for (let j = 0; j < ptsCount; ++j, innerPtIdx += VEC_SIZE) {
+          const vtxIdx = chunkStartIdx + innerPtIdx;
+          new THREE.Vector3().fromArray(normals, vtxIdx - 2 * ptsCount * 3).toArray(normals, vtxIdx);
+        }
+        continue;
+      }
+      for (let j = 0; j < ptsCount; ++j, innerPtIdx += VEC_SIZE) {
+        const vtxIdx = chunkStartIdx + innerPtIdx;
+        tmpShape[j].fromArray(this._positions, vtxIdx);
+      }
+      innerPtIdx = i * (ptsCount * 3);
+      for (let j = 0; j < ptsCount; ++j, innerPtIdx += VEC_SIZE) {
+        const vtxIdx = chunkStartIdx + innerPtIdx;
+        const prevRingPt = new THREE.Vector3().fromArray(this._positions, vtxIdx - ptsCount * 3);
+
+        tmpPrev.subVectors(tmpShape[(j + ptsCount - 1) % ptsCount], tmpShape[(j + 1) % ptsCount]).normalize();
+        tmpNext.subVectors(tmpShape[j], prevRingPt).normalize();
+        new THREE.Vector3().crossVectors(tmpPrev, tmpNext).normalize().toArray(normals, vtxIdx);
+      }
+    }
+  }
+
+  setItem(itemIdx, matrices, hasSlope = false, hasCut = false) {
+    const ptsCount = this._chunkGeo._positions.length;
+    const chunkStartIdx = ptsCount * this._ringsCount * itemIdx * VEC_SIZE;
+
+    this._setPoints(matrices, ptsCount, chunkStartIdx, hasCut);
+    if (hasSlope) {
+      this._setSlopeNormals(ptsCount, chunkStartIdx, hasCut);
+    } else {
+      this._setBaseNormals(ptsCount, chunkStartIdx, hasCut);
     }
   }
 
