@@ -913,9 +913,23 @@ Miew.prototype._onTick = function () {
 
   this._onUpdate();
   if (this._needRender) {
-    this._onRender();
+    this._onRender2();
     this._needRender = !settings.now.suspendRender || settings.now.stereo === 'WEBVR' || !!device;
   }
+};
+
+Miew.prototype._onRender2 = function () {
+  const gfx = this._gfx;
+  const target = null;
+
+  // render to offscreen buffer
+  gfx.renderer.setClearColor(settings.now.bg.color, Number(!settings.now.bg.transparent));
+  gfx.renderer.setRenderTarget(target);
+  gfx.renderer.clear();
+
+  gfx.camera.layers.set(gfxutils.LAYERS.DEFAULT);
+  gfx.renderer.render(gfx.scene, gfx.camera);
+  gfx.renderer.render(gfx.scene, gfx.camera);
 };
 
 Miew.prototype._getBSphereRadius = function () {
