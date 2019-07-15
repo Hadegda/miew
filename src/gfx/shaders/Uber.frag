@@ -265,11 +265,12 @@ float unpackRGBAToDepth( const in vec4 v ) {
   		return step( compare, unpackRGBAToDepth( texture2D( depths, uv ) ) );
   	}
 
-    float getShadow( sampler2D shadowMap, DirectionalLight dirLight, vec4 shadowCoord, vec3 vViewPosition, vec3 vNormal ) {
+    float getShadow( sampler2D shadowMap, DirectionalLight dirLight, vec4 shadowCoord, vec3 vViewPosition, vec3 vNormal, float coef ) {
    	  float shadow = 0.0;
 
       // When shadows for sprites will appear use here for them normals as it done for G-buffer
-      shadowCoord.xyz += dirLight.shadowBias * vNormal;
+      shadowCoord.xyz += dirLight.shadowBias * vNormal*0.05*coef;
+      //shadowCoord.z += dirLight.shadowBias * vNormal.z * coef;
       shadowCoord.xyz /= shadowCoord.w;
 
       bvec4 inFrustumVec = bvec4 ( shadowCoord.x >= 0.0, shadowCoord.x <= 1.0, shadowCoord.y >= 0.0, shadowCoord.y <= 1.0 );
@@ -388,14 +389,32 @@ float unpackRGBAToDepth( const in vec4 v ) {
     ReflectedLight reflectedLight = ReflectedLight( vec3( 0.0 ), vec3( 0.0 ), vec3( 0.0 ));
     vec3 irradiance = ambientLightColor * PI;
 
+    float shadowMask1 = 1.0;
+    float shadowMask2 = 1.0;
+    float shadowMask3 = 1.0;
+    float shadowMask4 = 1.0;
+    float shadowMask5 = 1.0;
     float shadowMask = 1.0;
     // see THREE.WebGLProgram.unrollLoops
   	#pragma unroll_loop
   	  for ( int i = 0; i < NUM_DIR_LIGHTS; i ++ ) {
   	    #ifdef SHADOWMAP
-  	    if ( directionalLights[ i ].shadow > 0 ) shadowMask = getShadow( directionalShadowMap[ i ], directionalLights[ i ], vDirectionalShadowCoord[ i ], vViewPosition, vDirectionalShadowNormal[ i ] );
+  	    if ( directionalLights[ i ].shadow > 0 ) shadowMask1 = getShadow( directionalShadowMap[ i ], directionalLights[ i ], vDirectionalShadowCoord[ i ], vViewPosition, vDirectionalShadowNormal[ i ], 0.0 );
   	    #endif
+        #ifdef SHADOWMAP
+        if ( directionalLights[ i ].shadow > 0 ) shadowMask2 = getShadow( directionalShadowMap[ i ], directionalLights[ i ], vDirectionalShadowCoord[ i ], vViewPosition, vDirectionalShadowNormal[ i ], 3.0 );
+        #endif
+        #ifdef SHADOWMAP
+        if ( directionalLights[ i ].shadow > 0 ) shadowMask3 = getShadow( directionalShadowMap[ i ], directionalLights[ i ], vDirectionalShadowCoord[ i ], vViewPosition, vDirectionalShadowNormal[ i ], 5.0 );
+        #endif
+        #ifdef SHADOWMAP
+        if ( directionalLights[ i ].shadow > 0 ) shadowMask4 = getShadow( directionalShadowMap[ i ], directionalLights[ i ], vDirectionalShadowCoord[ i ], vViewPosition, vDirectionalShadowNormal[ i ], 7.0 );
+        #endif
+        #ifdef SHADOWMAP
+        if ( directionalLights[ i ].shadow > 0 ) shadowMask5 = getShadow( directionalShadowMap[ i ], directionalLights[ i ], vDirectionalShadowCoord[ i ], vViewPosition, vDirectionalShadowNormal[ i ], 10.0 );
+        #endif
 
+      shadowMask = (shadowMask1 + 2.0*shadowMask2 + 4.0*shadowMask3 + 2.0*shadowMask4 + shadowMask5)/10.0;
   		  if ( shadowMask > 0.0 ) RE_Direct_BlinnPhong( directionalLights[ i ], geometry, material, reflectedLight, shadowMask );
   		}
 

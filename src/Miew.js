@@ -462,7 +462,7 @@ Miew.prototype._initGfx = function () {
   light12.shadow = new THREE.DirectionalLightShadow();
   light12.shadow.bias = 0.09;
   light12.shadow.radius = settings.now.shadow.radius;
-  const shadowMapSize = Math.max(gfx.width, gfx.height) * window.devicePixelRatio;
+  const shadowMapSize = Math.max(gfx.width, gfx.height) * window.devicePixelRatio*2;
   light12.shadow.mapSize.width = shadowMapSize;
   light12.shadow.mapSize.height = shadowMapSize;
   light12.target.position.set(0.0, 0.0, 0.0);
